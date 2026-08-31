@@ -10,7 +10,7 @@ This GitHub repo is the knowledge graph: ticket maps, concepts, Cursor setup cop
 
 **→ [`IMPACT/`](IMPACT/README.md)** (separate folder, easy to spot)
 
-That section is written for humans: what each ticket shipped, why Nutanix Central / federated IAM needed it, what breaks without it, and how the tickets form one product. It is **not** the engineering wiki — it links into `inbox/` when you want the full decision log.
+That section is written for humans. **Every ticket page uses the same outline:** problem, how it was solved, impact, how it was done, technologies and skills, significant technical difficulties (design/federation/schema — not one-off debugger noise).
 
 | Ticket | One-line company outcome |
 | --- | --- |
