@@ -1,0 +1,19 @@
+{
+  "wikiFolder": "wiki",
+  "language": "en",
+  "wikiLanguage": "en",
+  "enableSchema": true,
+  "tagVocabularyMode": "default",
+  "extractionGranularity": "standard",
+  "autoWatchSources": true,
+  "autoWatchMode": "notify",
+  "autoWatchDebounceMs": 5000,
+  "watchedFolders": ["inbox"],
+  "periodicLint": "off",
+  "startupCheck": true,
+  "startupCheckNoticeLevel": "visible",
+  "createWelcomeNote": true,
+  "slugCase": "lower",
+  "createStubsForUnresolvableLinks": true,
+  "customQueryInstructions": "This vault is a Nutanix IAM / Kronos engineering wiki. Prefer entity pages for tickets (ENG-*), products (NC, PC, NCM, NKP, Prism), and repositories (iam-themis, ntnx-api-iam, iam-utils, iam-bootstrap). Prefer concept pages for fields and mechanisms (authoringScope, products, global ACP, identity federation, lattice, shard copy, mutation guards). Distinguish NC-authored vs PC-authored behavior. When answering, cite source notes and wiki pages; do not invent PR numbers, SHAs, or CI status."
+}

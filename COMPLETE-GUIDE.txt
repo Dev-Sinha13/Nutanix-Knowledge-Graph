@@ -1,0 +1,1057 @@
+================================================================================
+COMPOUNDING ENGINEERING MEMORY
+Obsidian knowledge graph + Cursor agent
+Complete document (plain text)
+================================================================================
+Working vault on this machine:
+  /Users/dev.sinha/Documents/Obsidian Vault/Nutanix-Core
+
+This file is one linear document: why a knowledge graph, how issues are
+structured, why Cursor and Obsidian were set up this way, how to present it,
+how to clone it, the four-month instruction corpus, and the click-path setup.
+
+
+================================================================================
+I. ONE-SENTENCE CLAIM
+================================================================================
+
+We store engineering knowledge as a graph of typed notes and typed links,
+keep evidence in git, keep procedures as short Cursor skills, and require
+every new agent to walk related nodes before it plans. We do not treat chat
+history as memory, and we do not dump the whole vault into the prompt.
+
+
+================================================================================
+II. WHY A KNOWLEDGE GRAPH
+================================================================================
+
+IAM / Global IAM work is not one file and one PR. A typical change has:
+
+- Several tickets that look independent in Jira and are not.
+  Example: authoringScope without a mutation guard is an incomplete story.
+- Several repos with a directed ownership chain:
+  ntnx-api-iam -> iam-utils -> iam-themis -> iam-bootstrap
+  -> iam-user-authn -> iam-deployment
+- Several kinds of truth that rot at different speeds.
+  The scalar-vs-array decision is stable. "PR #910 still OPEN" is not.
+- Several kinds of knowledge that must not be mixed.
+  How Lattice ApplyChange works vs "we used --force-with-lease on Thursday."
+
+What each shape of storage answers:
+
+  A folder answers:     what files belong to ENG-915519?
+  A linear doc answers: what happened in order?
+  A chat answers:       what did we say this afternoon?
+  A knowledge graph answers: what is this connected to, and along which relation?
+
+That last question is what a new agent (or you, months later) actually needs.
+"Products vs authoringScope" is not a subdirectory. It is an edge: different
+field, different mutability, same Kronos epic. If that edge lives only in
+someone's head, every new chat re-derives it or copies a stale Jira sentence
+(the brief that still said authoringScope was an array).
+
+Why graphs beat the alternatives we actually tried
+-------------------------------------------------
+
+Chat transcripts. High fidelity, zero query. You cannot ask a transcript
+"show everything that touches Lattice identity rewrite" without reading it.
+Parallel chats do not merge. The mutation-guard session does not automatically
+know the shard-copy enrich/resolve model unless you paste or it greps.
+
+One giant markdown file. We have that too:
+iam-themis/.notes/PRODUCTS_FIELD_CONTEXT.md
+It is the right shape for one initiative's evidence (SHAs, gates, D-numbers).
+It is the wrong shape for cross-initiative navigation. Nobody reads section 47.
+They follow a link from the thing they already opened.
+
+Wiki without links (Confluence-style pages). Pages exist; relationships are
+a related-links footer or keyword search. Search hits "NC" on every note.
+A wikilink with display text ("who authored" vs "what it applies to") is a
+relation a human or agent can see on the index.
+
+Pure code / grep. Necessary before you edit (verify before you write).
+Insufficient as memory. Grep does not tell you AccessPolicies were
+deliberately removed from products (decision D24), or that mutation checks
+must sit above persistence so Lattice ApplyChange still works. Those are
+decisions, not strings in authoring_scope.go.
+
+RAG over the whole vault. That is a bag of chunks. Chunks do not preserve
+"this is decided / this is open / this is a process lesson / this is a SHA."
+The graph forces a node type so retrieval is not "semantically nearby
+paragraphs."
+
+The graph is how we store relations and node types that Jira, git, and chat
+each refuse to store well.
+
+
+What a node is
+--------------
+
+A file is storage. A node is a thing you might arrive at from more than one
+direction.
+
+  Ticket    ENG-915519, ENG-949861
+            Jira identity; has status, PRs, a worktree
+
+  Concept   authoringScope, lattice, global ACP
+            Shared by many tickets; definition must stay consistent
+
+  Product   NC, PC
+            Easy to collapse by acronym; must stay distinct
+
+  Repo      iam-themis
+            Ownership; "is this Themis-only?"
+
+  Person    Manish, Aditya, Praveen
+            Reviewer / design-lead routing
+
+  Pattern   audit-before-planning, ASCII tavern
+            How we fail; reused across tickets
+
+  Source    a specific index or overview note
+            Provenance; where did this claim come from?
+
+Edges are wikilinks, usually with display text that states the relation:
+predecessor, sibling, mirrors the handler-layer validator, who-authored vs
+what-it-applies-to.
+
+If two tickets are related and you only put them in the same folder, you have
+encoded containment. Global IAM is not a containment hierarchy. Shard copy
+does not contain authoringScope. They share lattice and global ACP. That is
+a graph.
+
+
+================================================================================
+III. WHY OBSIDIAN WAS CHOSEN (DECISION BY DECISION)
+================================================================================
+
+Not because it is trendy. Because it is a local, file-native,
+bidirectional-link graph over markdown we already write.
+
+Local files, not a web wiki.
+  The vault sits next to nutanix-core. Agents and ripgrep can read it.
+  MCP reads and writes the same bytes you see in Graph view. If the company
+  wiki is permissioned HTML, the agent is blind.
+
+Markdown plus wikilinks.
+  A link to ENG-915519's index is human-readable and machine-followable.
+  Bidirectional backlinks mean you do not update every sibling when you add
+  ENG-949861. The predecessor already points forward; Graph shows the reverse.
+
+Graph view is a debugger for the knowledge, not a toy.
+  If mutation guard does not show an edge to authoringScope, the map is wrong
+  the same way a missing import is wrong. Missing wikilinks are bugs in the
+  notebook.
+
+One note is not one idea, on purpose.
+  A 12-file ticket is so you can open PR status without loading process
+  lessons, and so an agent can be told "read the index, then the spec, not
+  the review rollup." That is progressive disclosure for context windows.
+  One 4,000-line note per ticket recreates the giant git notes file we already
+  have.
+
+Tags are secondary.
+  Frontmatter tags (eng-915519, kronos, moc) are for filters.
+  Tags do not replace links. "kronos" on five tickets does not tell you
+  mutation guard depends on the authoringScope field existing on a branch.
+
+Why not only git .notes/?
+  .notes/ is canonical evidence per repo. The vault is cross-repo,
+  cross-ticket navigation. Duplicating SHAs into Obsidian is how notes go
+  stale. The index points at AUTHORING_SCOPE_CONTEXT.md instead of copying it.
+  Two stores, two jobs. That split is load-bearing.
+
+Why inbox/ as a folder if the meaning is a graph?
+  Folders are a weak graph (a tree). We still use a tree for lifecycle: raw
+  ticket narrative stays together so "this is human-edited source" is a
+  directory. The meaning graph is the links, not the folder nest. Putting all
+  ENG-* folders in inbox/ says "these are sources," not "915519 is a child of
+  Kronos." Kronos is a concept node, not a parent folder.
+
+One vault, never nested.
+  Community plugins and settings are per vault. A vault inside a vault was
+  the first real failure: plugin enabled in Nutanix-Core, Obsidian still
+  focused on the parent.
+
+
+================================================================================
+IV. WHY CURSOR WAS WIRED THIS WAY (DECISION BY DECISION)
+================================================================================
+
+MCP to the vault.
+  The agent must follow wikilinks and edit indexes without you pasting files.
+  If Cursor cannot see the vault, the graph exists only for you in Obsidian,
+  and every new chat is a blank agent. MCP makes the graph agent-addressable.
+
+Absolute path in ~/.cursor/mcp.json.
+  The tool has no notion of "whatever vault I have focused in Obsidian."
+  Wrong path equals the parent vault. We already hit that.
+
+Do not dump the vault into the prompt.
+  A graph is useful because you traverse a few edges, not because you embed
+  every node. Traversing ENG-949861 -> 915519 -> scalar decision is about
+  three notes. Embedding forty inbox files is a bag again.
+  "Search related, then stop" is how you use a graph at inference time.
+
+Skills versus vault.
+  The graph stores what is true and how nodes relate.
+  Skills store what to do this turn (audit, worktree, do not invent SHAs).
+  If the verification ladder lives only as a wiki essay, the agent might
+  never open it. If NC vs PC semantics live only in a skill, the skill rots
+  when Kronos evolves.
+  Concepts live in the graph. Procedures live in skills. Evidence lives in
+  .notes/.
+
+alwaysApply rule (wikiskill-loop).
+  A graph the agent is not required to start from is a hobby wiki. The rule
+  is the entry edge: you may not plan until you have walked related nodes.
+  That is Cursor's feature, not Obsidian's.
+
+alwaysApply ticket rules stay separate (iam-products-field.mdc).
+  Those are constraints on a region of the graph (products does not apply to
+  AccessPolicies). They are not a substitute for the Kronos map.
+  If "APs out of scope" lives only on a wiki page, a products session might
+  never open it. If the whole Kronos map is stuffed into that one rule, every
+  chat pays for products law on a shard-copy ticket.
+
+Worktrees plus HEAD check.
+  Parallel agents are concurrent writers on code. The vault is a concurrent
+  writer on maps. Same class of bug: last writer wins unless you isolate.
+  Worktrees isolate git. Vault discipline is append decisions, do not rewrite
+  history, keep correction notes.
+
+Node.js / npx.
+  The Obsidian MCP server runs via npx. Cursor's bundled node is not enough.
+  brew install node. Without npx the MCP toggle stays dead.
+
+User-global Cursor rules that already existed (all projects):
+  Commit only when asked. Never skip hooks (--no-verify). No reckless
+  force-push. HEREDOC commit messages. GitHub PRs via gh with summary and
+  test plan. Web UI verified in the browser. Gerrit: push to
+  refs/for/<branch>, never straight to refs/heads.
+
+
+================================================================================
+V. HOW EVERY ISSUE IS STRUCTURED
+================================================================================
+
+Family resemblance, not one rigid 12-file template. Small tickets stay small.
+Large ones split until a file has one job.
+
+Add a file when you have a new kind of truth, or a file you must open without
+the others. Do not add files to look complete.
+
+
+5.1 The index (00 - Index.md) is a map of content
+
+Every ticket that matters has an index. Jobs:
+
+  1. One-liner / blockquote. What the ticket is, in one breath. If you cannot
+     write this, you cannot link to it from other tickets.
+
+  2. Status at a glance. Inverted pyramid. PRs, design lock, hard blocker,
+     action needed. A returning human or agent must not wade through history
+     to learn "still waiting on Manish's swagger pin."
+
+  3. Read in this order. Numbered links. Graphs have no natural order;
+     features do. The index supplies the path without flattening the graph
+     into one document.
+
+  4. Pointer to .notes/. Which repo file is canonical for SHAs and CI.
+
+  5. PR URLs. Outbound to GitHub. Not duplicated CI logs.
+
+  6. Related work. Typed edges to other tickets (sibling, predecessor,
+     mirrors validator pattern). This is the cross-ticket graph.
+
+ENG-915519 related-work line is the point of the graph in one sentence:
+authoringScope is who-authored / immutable; products is what-it-applies-to /
+server-derived. That distinction is an edge label. It does not belong only
+in a Jira description.
+
+ENG-949861's index is short because the ticket is a follow-up. It does not
+copy the 12-file spec. It depends on 915519 (predecessor) and mirrors
+910350's handler-layer pattern (analogy). One implementation note, not twelve.
+
+ENG-910350's index states repo scope: Themis only. That is an edge: do not
+open ntnx-api-iam. A folder named ENG-910350 cannot say that. A sentence on
+the index can.
+
+
+5.2 Split files by kind of truth (large tickets: 915519, 932537)
+
+  01 Overview              Meaning and why. Slow rot. Everyone first.
+  02 Canonical spec        Contract (shape, mutability). Slow after lock.
+  03 Repository map        Ownership. Medium.
+  04 PR status             Live GitHub. FAST. Treat as cache. Re-verify.
+  05 Cross-repo flow       How a bit moves. Slow. Empty API field debugging.
+  06 Storage and migration DB, indexes, backfill. Medium.
+  07 Handler logic         Runtime stamping and guards. Medium.
+  07 API surface           Which APIs expose the field (products). Medium.
+  08 PR reviews rollup     Comment inventory. Fast. "Certain enough to act?"
+  09 Open questions        NOT decided. Fast. Must not mix with 10.
+  10 Decisions log         DECIDED, with why. Append-only.
+  11 Process lessons       Abstract how-we-work. Slow. Other tickets.
+  12 Issues encountered    Concrete incident receipts. Append-only.
+  12 PR description drafts Paste for GitHub. Fast. Bodies die on chat reset.
+
+The load-bearing split is 09 versus 10 (open versus decided). Mixing them is
+how every session re-argues scalar versus array. Two nodes, not a highlight
+color in one essay.
+
+11 versus 12 is abstract versus concrete. Process lessons are reusable
+(verification ladder). Incidents are evidence hanging off a ticket. If you
+only keep incidents, the next ticket does not find "audit before plan." If
+you only keep abstracts, you cannot defend the lesson. Promote 11 into
+wiki/patterns/ so lessons are not trapped inside one ticket folder.
+
+
+5.3 Smaller tickets use a subset
+
+ENG-910347 / ENG-910350 typically:
+
+  Overview and design / requirements
+  Implementation and testing / verification
+  Decisions log
+  Open questions and status
+
+Same kinds, fewer slices.
+
+ENG-949861: one implementation-and-decisions note because the requirement is
+one guard. Forcing 12 files would be fake structure.
+
+
+5.4 Numbered prefixes
+
+00, 01, 02 are sort order in the file explorer, not graph order. Graph order
+is the index's numbered list. Prefixes keep Finder aligned for humans who
+never open Graph view. Agents should follow wikilinks, not directory sort.
+
+
+5.5 Frontmatter
+
+  tags including ticket id: query "all kronos" or "all moc"
+  status: in-progress / implemented-not-committed (property on the ticket node)
+  updated: honesty about staleness; PR status is a cache
+
+
+5.6 The Kronos graph (the edges that matter)
+
+  ENG-915519 authoringScope
+      predecessor of ENG-949861 mutation guard
+      sibling of ENG-932537 products (contrast: who vs what)
+
+  ENG-910344 RPC resolvers
+      parent of ENG-910347 shard copy (enrich/resolve extended to bulk)
+
+  ENG-910347
+      cited by ENG-910350 (local identity has no stable federated id)
+
+  ENG-910350
+      validator pattern cited by ENG-949861 (handler layer, not persistence)
+
+Concept hubs: lattice, global ACP, NC, PC. Tickets hang off concepts so a
+search for "lattice" does not require remembering ticket numbers.
+
+NC and PC are separate nodes. Collapsing them into "Nutanix" destroys the
+mutation-guard predicate: PC request AND NC-authored.
+
+
+5.7 The technical-stack note is a hub, not a ticket
+
+"Nutanix Technical stack.md" is high fan-in: platform sketch, issue
+relationship map, troubleshooting catalog, "before the next issue." It is
+allowed to be long because it is a hub. Tickets should link out to a
+troubleshooting pattern rather than each copying the $fv sermon. Hubs that
+never link to tickets become blogs.
+
+
+5.8 How to traverse (human and agent)
+
+  Start at the index of the ticket you were asked about, not at the hub,
+  unless you do not know the ticket id.
+
+  Walk related-work links until you can say which lessons apply and which
+  feature-specific decisions do not (products != APs is not a shard-copy law).
+
+  Open .notes/ in the repo the index names for evidence. Do not treat vault
+  PR status as live.
+
+  Grep code before planning. The graph told you where and what was decided.
+  Grep tells you what is in HEAD.
+
+  Write back on the correct node type:
+    New SHA / test command     -> .notes/
+    Status / blocker           -> index (fast-rot section)
+    New decision               -> decisions log (append)
+    New incident               -> issues encountered
+    Reusable how-to            -> process lessons, then wiki/patterns/
+    Stable definition          -> concept page
+
+  Never append a SHA to a concept page.
+  Never put "still OPEN" on a canonical spec.
+  Wrong node type is how the graph lies.
+
+
+================================================================================
+VI. HOW TO PRESENT THIS (WORKSHOP)
+================================================================================
+
+Do not start with "Obsidian is a markdown wiki." Start with failures.
+
+Story 1. ENG-932537. A plan to add products on the v1 load path was about
+nine steps (vendor models, handlers, filters). A two-grep audit showed
+LoadObjectRequest.Products already existed, the converter already copied it,
+and the filter allow-list already had products. The work collapsed to a
+couple of line edits. A blank agent will re-plan the nine-step version every
+Monday unless that lesson lives outside the chat.
+
+Story 2. ENG-949861. The human brief said authoringScope is an array and
+"contains NC." The code on ENG-915519 had already flipped it to a scalar.
+An agent that only has the Jira paste implements the wrong check. An agent
+required to read the definition before writing implements == "NC".
+
+Line for the room: Cursor is not underperforming because the model is weak.
+It is underperforming because every session discards the last four months
+unless we compile them.
+
+Two performance claims (keep them separate)
+-------------------------------------------
+
+Operational (this team, May-August), no fake KPI:
+  Less re-derivation. Related tickets are a map.
+  Fewer class-of-bug repeats (omitted SELECT lists, bootstrap dropping a
+  field, Tavern ASCII, vendor gofmt, $fv b3 vs b4, ETag retry-on-same-call).
+  Session continuity: where I am, decision log vs open questions.
+  Correctness under conflicting briefs: code wins; label VERIFIED vs INFERRED.
+  New-agent ramp: we used to paste a starter pack every chat. The setup's
+  job is to stop requiring the paste.
+
+Pitch reset cost and repeat-failure cost. Do not put "+40% PR velocity"
+on a slide.
+
+Whiteboard three layers, walk one ticket:
+
+  inbox/ENG-949861/00 - Index.md           RAW    human map, status, links
+  iam-themis/.notes/...CONTEXT.md          RAW    SHAs, commands, CI
+  wiki/entities/eng-949861.md              WIKI   stable facts + links
+  wiki/patterns/...                        WIKI   how we fail / how we work
+  ~/.cursor/skills/iam-ticket-workflow     SKILL  what the agent RUNS
+
+Punchlines:
+  Graph view is the index. Query is walking links, not swallowing the vault.
+  .notes/ never moves to Obsidian as the system of record for evidence.
+  If a skill is wrong, revert the skill; keep the pattern.
+
+Live Graph: authoringScope -> ENG-949861 -> AllowOperation. Related work
+in 15 seconds.
+
+Graph-first demo sequence:
+  1. Jira list of five tickets (flat).
+  2. The same five in Graph view (edges).
+  3. Click 949861 -> 915519 -> "scalar, not array."
+  4. Open 09 vs 10 on 915519: open vs decided.
+  5. Open 910350 index: "Themis only."
+  6. Open technical-stack hub, jump to a troubleshooting pattern, then ticket.
+  7. New Cursor chat: related nodes only, then grep.
+
+Audience should leave believing: links are the data structure, folders are
+packaging, Cursor is a walker of that graph plus a writer that must put ink
+on the right node.
+
+Live agent loop (new chat, do not paste bootstrap):
+
+  Starting ENG-.... Search the vault for related notes. Do not dump the
+  whole wiki. Audit the code for what is already wired. Five-line plan.
+  Label VERIFIED vs INFERRED. Do not invent GitHub state.
+
+Then:
+
+  Add wiki/patterns/<slug>.md with failure mode, workaround, evidence.
+  Append wiki/log.md. Update only the inbox index status line.
+
+If Settings -> Rules does not list the loop rule, the demo fails on purpose:
+vault without rules is a museum.
+
+Close:
+  Clone the loop, not the ENG-* files.
+  Plugin alone is pretty Graph view. Rules plus skills plus end-of-turn
+  patterns is a teammate that does not forget June.
+
+Suggested 75-minute run of show
+-------------------------------
+  0-5    Story: nine-step plan vs two greps; array vs scalar
+  5-13   Operational benefits (no fake KPI)
+  13-22  Three layers plus Graph walk
+  22-35  Four-month evolution
+  35-50  Setup on a clean vault
+  50-60  New-chat gate (pass/fail)
+  60-70  Live pattern write
+  70-75  Q&A traps
+
+Traps: nested vault, wrong vault window, no npx, @-entire-vault, copying
+ENG-* bodies, treating vault PR status as live GitHub.
+
+What to copy vs not
+-------------------
+Copy: folder contract, schema shape, MCP snippet, two skills, alwaysApply
+rule, blank ticket template, Issue Memory habit, .notes/ logging.
+
+Do not copy: ENG-* ticket bodies, API keys, MCP absolute paths, nested vault.
+
+
+================================================================================
+VII. FOUR-MONTH EVOLUTION (MAY-AUGUST 2026)
+================================================================================
+
+The plugin did not create the intelligence. You created it over tickets.
+The vault is compiler output. Cursor skills are the executable.
+
+May 2026. ENG-915519. Inverted-pyramid indexes, decision log not mixed with
+open questions, "where I am," question-framing template, review-comment
+certainty, verification ladder. Lived in vault ticket folders plus
+ntnx-api-iam/.notes/AUTHORING_SCOPE_CONTEXT.md. Next chat still needed
+"read the vault."
+
+June. ENG-910347 / ENG-910350. Themis-only tickets, worktrees per issue,
+do not assume six repos. Parallel agents switched branches under each other.
+
+May-July. ENG-932537. Audit-before-plan. Notes-as-deliverable became a
+Cursor alwaysApply rule (iam-products-field.mdc). Subject-only commits.
+git commit-tree for Cursor Co-authored-by (never --no-verify). ASCII Tavern.
+Never gofmt -w vendor. Rule was ticket-specific; other tickets did not
+inherit the process, only products constraints.
+
+July-August. ENG-948242, ETag/migrations, deployment image skew, credential
+redaction, Gerrit refs/for vs GitHub PR. Technical-stack notebook. Bootstrap
+prompt grew into a novel.
+
+August 3. Explicit starter pack. Implement, do not analyze-only.
+Recon -> implement -> validate -> integrate -> document. Classify CI
+(code vs fixture vs infra vs merge). Issue Memory before coding. Pasted
+into each new chat. If you forgot the paste, the agent was a May agent.
+
+August 10. "Operate like a careful senior engineer": VERIFY BEFORE YOU WRITE;
+reuse don't reinvent; scope tightly; prove it; leave a trail. Still paste-
+dependent.
+
+August 20-24. Inherit lessons from all prior issues. Issue Memory schema.
+Worktree same as other issues. Test end to end before push. Memory still
+reconstructed from grep and hope.
+
+August 30. Obsidian MCP, vault graph, skills compiled from those lessons,
+always-on loop rule. This is the compile step.
+
+Honest arc: logged, then ruled, then pasted, then compiled. Anyone who only
+installs a plugin is in May 2026.
+
+
+================================================================================
+VIII. PERSONAL INSTRUCTION CORPUS
+(what must be in skills and rules or the clone will not work the same)
+================================================================================
+
+8.1 Senior-engineer operating system (August 10)
+
+VERIFY BEFORE YOU WRITE.
+  Never call a function, constant, type, or column without reading its
+  definition. Do not infer APIs. Read surrounding code for conventions.
+
+REUSE, DON'T REINVENT.
+  Search for an existing pattern in this repo, a sibling, or a referenced PR
+  and mirror it. If a helper exists only on an unmerged branch, reimplement
+  the minimal local equivalent using merged primitives. State that you did
+  this and why.
+
+SCOPE TIGHTLY.
+  Only what the task requires. No speculative abstractions, no filler tests,
+  no drive-by refactors. Ask first if extra work seems warranted.
+
+TRACE THE WHY.
+  Tie every non-obvious decision to a requirement, review comment, the code,
+  or a constraint you verified. When requirements conflict, surface the
+  conflict. Push back on wrong requests with evidence.
+
+PROVE IT WORKS.
+  After substantive edits: build, vet/lint, relevant tests. Report results.
+  Distinguish errors you introduced from pre-existing warnings in untouched
+  files.
+
+STATE HYGIENE.
+  Verify expected branch/worktree before committing. Clean author, no
+  unwanted trailers. Prefer fast-forward. --force-with-lease only with a
+  verified expected remote tip. Never push a shared/protected branch or
+  force-push without explicit approval.
+
+LEAVE A TRAIL.
+  Running notes/decision log: what changed, where, why, decisions and
+  rejected alternatives, how to reproduce. Update at the end of each work
+  turn.
+
+COMMUNICATE.
+  Concise. Lead with what you did and the outcome. Do not claim done until
+  verified.
+
+
+8.2 Release-agent bootstrap (August 3)
+
+Do not stop at analysis. Implement, test, and push when asked.
+Minimal, scoped, reversible. Root cause over symptom patches.
+Notes and docs are deliverables, not optional.
+
+Workflow:
+  A) Recon. Impacted repos/files. Open PR state (mergeability, CI, behind/
+     conflict) before coding.
+  B) Implement. Targeted edits. Existing patterns and naming. Do not revert
+     unrelated user changes.
+  C) Validate. Focused build/tests per touched repo. YAML/Tavern syntax and
+     relevant suites. Re-check branch and CI.
+  D) Integrate. Merge latest base. Revendor with intent (keep feature-
+     required versions if master has older incompatible ones).
+  E) Document. Durable notes log every substantive IAM turn: decisions,
+     files touched, gate evidence, reproducibility, changelog, draft PR body.
+
+Classify the task: code bug, test fixture drift, infra/env, or merge/
+dependency drift.
+
+CI: isolate feature code vs pipeline inputs (wrong image, $fv, TLS).
+
+No speculative refactors. State VERIFIED vs INFERRED. Flag credential leaks.
+If blocked, give 1-2 concrete unblock paths.
+
+Final report: issue -> cause -> fix -> evidence -> next actions.
+
+Known failure classes to recognize immediately:
+  AuthZ FV mismatch (expected v4.r1.b3, actual v4.r1.b4): usually stale
+  Tavern assertion or image pair, not a Themis runtime bug.
+  Docker/BuildKit TLS then "package not found": cert/proxy trust, not Alpine
+  package names.
+  Merge-conflict in go.mod/vendor: resolve with intent, tidy/revendor, retest.
+
+
+8.3 Issue Memory (before coding)
+
+For each relevant prior issue/PR capture:
+  issue/PR ID
+  root-cause class (code, test drift, dependency drift, infra/env,
+    release/process)
+  exact fix pattern
+  validation command(s) that proved the fix
+  common regression signals
+
+Reuse proven fixes first. Label VERIFIED vs INFERRED.
+
+wiki/patterns/ is Issue Memory with filenames.
+
+
+8.4 Process lessons from tickets (May-July)
+
+One canonical .notes/*_CONTEXT.md per initiative. Numbered sections.
+Correction notes when the doc was wrong (keep the wrong read visible).
+
+Inverted pyramid on indexes (status first).
+Decision log separate from open questions.
+"Where I am" at session end.
+
+Question-framing template:
+  1. One-line headline with canonical ID (ticket, RFC, path)
+  2. One paragraph of background
+  3. Clean A vs B with observable consequences
+  4. Targeted sub-questions
+  5. Out of scope / already decided
+  6. Optional prior-art pointer
+  Never dump narrative and end with "thoughts?"
+
+git rev-parse --abbrev-ref HEAD before significant git (parallel agents).
+
+Sticky go.mod replace directives contaminate vendor. Chain
+git reset --hard HEAD, then action, then verify in one shell; or use
+worktrees; or stop the parallel agent.
+
+--force-with-lease, never plain --force.
+
+Verification ladder for Go storage/migration changes:
+  1. gofmt -l (must be empty)
+  2. go build -mod=vendor
+  3. go vet -mod=vendor (new warnings only vs origin/master)
+  4. go test -mod=vendor -count=1
+  5. Re-verify after rebase against current master, not only before commit
+  6. Optional: gh pr checks after push
+  Skipping post-rebase re-verify is the most common omission.
+
+Review comments, classify before acting:
+  Mechanical (gofmt, typo)              always do it
+  Explicit human doc request            usually do it, minimal
+  Behavior change, you understand why   do it if local; else hold
+  Bot AI suggestion                     ignore unless a human asked
+  Design "should we do X instead?"      design-lead input
+
+Audit before planning:
+  grep field in vendor models
+  read converters
+  check column lists / field maps in storage/util.go
+  check supported-filter constants
+  THEN plan, and state what is already wired
+
+Vendor TEMP HACK plus same-day upstream PR. Prefer canonical generated
+style over TEMP HACK comments if gofmt cascades.
+
+git commit-tree to strip Cursor Co-authored-by without --no-verify:
+
+  PARENT=$(git rev-parse HEAD^)
+  TREE=$(git rev-parse HEAD^{tree})
+  NEW_COMMIT=$(git commit-tree "$TREE" -p "$PARENT" -F /tmp/clean-msg.txt)
+  git update-ref HEAD "$NEW_COMMIT"
+
+Subject-only commits. Bodies live in .notes/ and the PR description.
+
+ASCII-only Tavern YAML (Python 2.7 str codec). Check with:
+  perl -CSD -ne 'print "LINE $.: ", $_ if /[^\x00-\x7F]/' path/to.tavern.yaml
+
+Bulk-edit search keys must include the method name, not only a generic
+column tuple.
+
+Pre-existing failures: stash including untracked, retest on bare HEAD,
+restore. Document and ignore if it reproduces without your change.
+
+
+8.5 Technical-stack standing orders
+
+Re-verify GitHub, code, and CI before acting. Vault notes go stale.
+Do not store credentials, tokens, or private keys in the vault.
+
+Public IAM field ownership chain (do not assume every ticket needs all six):
+  1. ntnx-api-iam     public v4 schema
+  2. iam-utils        internal swagger / shared helpers
+  3. iam-themis       handlers, storage, lattice, most AuthZ tavern
+  4. iam-bootstrap    startup and seed conversion
+  5. iam-user-authn   tenants, identity enrich/resolve
+  6. iam-deployment   deployed config, CI/tavern images
+
+End-to-end checklist for a new field or behavior:
+  source schema and generated model
+  API request conversion and read projection
+  storage struct and JSON replication contract
+  SQL migration, insert/update, scan, every SELECT column list
+  in-memory sqlite/sqlmock schemas
+  bootstrap seeding and global orchestration
+  deployment configuration
+  unit, race, API, Tavern, brownfield
+  downstream pin, vendor, $fv assertions
+
+Troubleshooting by class:
+  Value in DB, reads empty     -> all query column constants and scan switches
+  Seed JSON has field, rows don't -> each bootstrap conversion
+  Tavern 428 or unset variable -> first failed stage (sequential; later is symptom)
+  Retry "already exists"       -> first pod created state; retries not isolated
+  $fv b3 vs b4                 -> mismatched Themis service/test image pair
+  ETag mismatch on migration   -> do not retry the same storage call; coordinator
+                                 may already retry the whole operation
+  AuthN client https://:0      -> deployed externalServices.authnService
+  Race on generated SDK client -> go test -race (shared client mutates state)
+
+CI: read the first failing assertion, not cleanup noise. Compare the same
+check on latest base before blame. Do not empty-commit to "heal" deterministic
+failures.
+
+Reply "done" on review only if the change was actually implemented.
+Follow each repository's PR template. Persist the draft in .notes/.
+GitHub IAM repos: normal PR pushes. Gerrit: refs/for/<target-branch>.
+
+Feature-specific decisions are NOT universal. State which apply:
+  ENG-932537 products: Roles and Entities only, not AccessPolicies
+  ENG-915519 authoringScope: scalar, immutable, server-stamped
+  ENG-910350: external identities via enrichment connector types; confirm
+    EXTERNAL/PROPAGATED with product
+  ENG-953364: empty tenant list is not completion for that migration
+  ENG-956163: retries delegated to bootstrap for that migration
+  ENG-924709: in-memory runtime flag is not durable cross-pod completion
+
+
+8.6 Ticket-shaped constraints (separate alwaysApply files)
+
+ENG-932537: products (API), ProductList (Go), text[] Postgres. Read-only in
+API payloads. Entity products from seeding; role products server-derived
+union. Log iam-themis/.notes/PRODUCTS_FIELD_CONTEXT.md every turn.
+
+ENG-915519: scalar {NC, PC}, server-stamped, immutable, omit-on-empty.
+
+ENG-949861: block PUT/DELETE on PC when stored authoringScope is NC.
+Handler layer so Lattice ApplyChange still mutates. 403, message about
+managed by Nutanix Central.
+
+Per-ticket git worktree, same as previous issues. End-to-end tests before push.
+
+
+================================================================================
+IX. STEP-BY-STEP SETUP
+================================================================================
+
+One vault. Do not create a vault inside another vault.
+Replace paths. This machine's working vault:
+
+  /Users/dev.sinha/Documents/Obsidian Vault/Nutanix-Core
+
+
+Step 1. Install Obsidian and create one vault
+  Install from https://obsidian.md
+  Create new vault. Open THAT folder, not a parent that contains it.
+  Community plugins are per-vault. Wrong window means "plugin isn't there."
+
+
+Step 2. Folder contract
+  Create:
+
+    Home.md
+    inbox/
+      README.md
+      DEMO-1/00 - Index.md     (or first real ticket)
+    wiki/
+      entities/
+      concepts/
+      sources/
+      schema/config.md
+      patterns/
+      index.md
+      log.md
+      skill-impact.md
+
+  Home.md: what inbox vs wiki is, start here.
+  inbox/README.md: source notes. Do not put generated wiki pages here.
+  inbox/ is human/agent source. wiki/ is compounding knowledge.
+  Repo .notes/ still own SHAs and CI logs.
+
+
+Step 3. First source note (before any graph expansion)
+
+    ---
+    tags: [demo, notes]
+    status: active
+    ---
+
+    # DEMO-1 — <one-line problem>
+
+    > One sentence: what this is and why it exists.
+
+    ## Status
+    - Not started.
+
+    ## Related
+    - (link sibling tickets once they exist)
+
+    ## Canonical evidence
+    - Repo notes file: <repo>/.notes/DEMO_CONTEXT.md
+
+  Index template forever:
+    frontmatter tags, status, updated
+    one-line what/why
+    status at a glance
+    read order of sibling notes
+    link to repo .notes/
+    related tickets as wikilinks
+    no SHAs on the index (those go in .notes/)
+
+
+Step 4. Optional: community plugin for Graph helpers
+  Settings -> Community plugins. Install if you want extra ingest UI.
+  Schema vocabulary can live in wiki/schema/config.md:
+    tickets -> project nodes
+    products (NC, PC) stay separate
+    repos -> repo nodes
+    fields and mechanisms -> concept nodes
+    wiki/patterns/ = failure modes, not facts
+  Graph view works on wikilinks even without a plugin.
+
+
+Step 5. Git repo memory
+  For each long initiative:
+    iam-themis/.notes/<INITIATIVE>_CONTEXT.md (or the owning repo)
+  Sections: overview, decisions D1..., files touched, gate evidence,
+  PR body drafts, changelog with YYYY-MM-DD and agent session N.
+  Project Cursor rule alwaysApply for that initiative's constraints
+  (clone of iam-products-field.mdc logging discipline).
+  Without .notes/, the vault becomes fanfic of git.
+
+
+Step 6. Node for Cursor MCP
+  In a normal terminal (not sandboxed):
+
+    node --version
+    brew install node     # if missing
+
+  npx must be on PATH (/opt/homebrew/bin/npx on Apple Silicon).
+
+
+Step 7. Point Cursor at the vault
+
+  File: ~/.cursor/mcp.json
+
+    {
+      "mcpServers": {
+        "obsidian": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "obsidian-mcp",
+            "/FULL/PATH/TO/WorkVault"
+          ]
+        }
+      }
+    }
+
+  Absolute path. Spaces in the path are fine inside the JSON string.
+  Restart Cursor. Settings -> MCP. Toggle obsidian on. Trust first run.
+  First start downloads the server via npx (needs network).
+  Verify: agent can list vaults and read Home.md.
+
+
+Step 8. First graph pages
+  Either write entity/concept pages by hand or ask Cursor:
+
+    Read inbox/DEMO-1/00 - Index.md. Create wiki source, entity, and
+    concept pages under wiki/ with bidirectional wikilinks. Do not invent
+    SHAs or PR numbers.
+
+  Open Graph view. You should see links.
+
+
+Step 9. Compile four-month instructions into Cursor skills
+
+  Personal, all projects: ~/.cursor/skills/<name>/SKILL.md
+  YAML name plus description (what AND when).
+  Do not put disable-model-invocation if you want auto-trigger.
+
+  Skill 1: wikiskill-loop
+    Three layers. Inference: skills plus a few wiki pages, not the whole
+    vault. After a real turn: inbox index, .notes/, wiki/patterns/, log.
+    Wiki never rolls back. One skill patch at a time from patterns.
+
+  Skill 2: iam-ticket-workflow (rename for other domains)
+    Paste procedures from section VIII: audit before plan, Issue Memory,
+    verification ladder, worktree, VERIFIED vs INFERRED, tavern ASCII,
+    vendor gofmt, repo chain. Keep the skill short. Point at the vault
+    and .notes/ for the rest. PURPOSE.md links to wiki/patterns/.
+
+
+Step 10. Always-on rules (this replaces the paste)
+
+  User: ~/.cursor/rules/wikiskill-loop.mdc
+    alwaysApply: true
+    Vault path, three layers, do not dump wiki, do not invent SHAs,
+    maintain wiki after real turns.
+
+  ALSO copy into <monorepo>/.cursor/rules/wikiskill-loop.mdc so teammates
+  and cloud agents get it. If user-level .mdc does not show in Settings,
+  the repo copy is the one that matters at work.
+
+  Keep ticket rules as separate files (iam-products-field.mdc, tavern k3d).
+
+  Optional: Cursor Settings -> User rules: paste VERIFY BEFORE YOU WRITE
+  (section 8.1) so it is in the system prompt even if skills fail to attach.
+
+  Confirm Settings -> Rules and Skills are enabled.
+
+
+Step 11. First pattern
+  wiki/patterns/audit-before-planning.md (or a real scar):
+    failure mode, workaround, evidence (link the source note).
+  Append wiki/skill-impact.md when you add skills (date, skill, accepted
+  or rejected, why).
+
+
+Step 12. Daily loop
+  1. New ticket -> inbox/<ID>/00 - Index.md
+  2. Cursor: search vault (few pages) -> audit code -> implement
+  3. Evidence -> repo .notes/
+  4. Map/status -> inbox index
+  5. Durable failure/strategy -> wiki/patterns/
+  6. Promote stable facts -> concept/entity pages
+  7. Change a Cursor skill only from patterns plus this turn; log impact
+  Re-verify GitHub/code before acting.
+
+
+Step 13. Prove a new chat works (the real clone test)
+
+  Open a NEW agent in the repo. Do NOT paste the bootstrap. Ask:
+
+    What do you do before planning an IAM ticket?
+
+  Pass: vault search, Issue Memory/patterns, audit code, worktree,
+  VERIFIED vs INFERRED, .notes/ at the end.
+
+  Fail: starts coding, or asks you to paste context.
+
+  That gate is the demo of "the same way."
+
+
+Checklist
+---------
+  [ ] One vault created and actually open
+  [ ] inbox/ plus wiki/ with patterns
+  [ ] Home.md plus first 00 - Index.md
+  [ ] .notes/ convention in the git repo
+  [ ] Node plus ~/.cursor/mcp.json plus MCP on
+  [ ] Graph view shows links
+  [ ] wikiskill-loop skill plus iam-ticket-workflow skill
+  [ ] wikiskill-loop.mdc alwaysApply in user rules AND the git repo
+  [ ] Ticket-specific rules still present (products, tavern, ...)
+  [ ] One pattern note written
+  [ ] New chat passes the gate without a bootstrap paste
+
+
+================================================================================
+XIV. EXAMPLE RULE AND SKILL TEXT (COPY)
+================================================================================
+
+--- wikiskill-loop.mdc ---
+description: Keep raw notes, wiki knowledge, and executable skills separate. Walk related vault nodes before planning. Do not dump the whole wiki into context.
+alwaysApply: true
+
+Do not treat chat history as memory.
+
+Raw: inbox/ plus in-repo .notes/ (SHAs, CI, commands stay in .notes/).
+Wiki: wiki/ entities, concepts, patterns. Never roll this back.
+Skills: ~/.cursor/skills/  Short procedures to follow while solving.
+
+While solving:
+  Load relevant skills. Do not dump the whole wiki.
+  Search only the few index/entity/concept pages that match the ticket.
+  Re-verify live code and GitHub. Do not invent PR numbers, SHAs, or CI.
+
+After a real work turn:
+  Patch inbox/.../00 - Index.md and the in-repo .notes/ file.
+  Add or update wiki/patterns/<slug>.md (failure or strategy, workaround,
+  evidence). Append, do not rewrite history.
+  Append wiki/log.md. If a skill changed, wiki/skill-impact.md
+  (accepted/rejected, why).
+  Promote stable facts onto entity/concept pages. Leave narrative in inbox.
+
+Skill updates: one skill, from patterns plus this turn. If a workflow change
+would make things worse, keep the skill and still keep the wiki pattern.
+
+
+--- iam-ticket-workflow SKILL.md (body summary) ---
+Start: search vault indexes (not every page); audit code before planning;
+pick repos from the chain (do not assume all six);
+git rev-parse --abbrev-ref HEAD before significant git.
+
+Question framing: headline plus ID, background, A vs B, unknowns, decided.
+
+Review comments: mechanical do; explicit human do if understood; design
+ask lead; bot ignore unless human asked.
+
+Verification: gofmt, build -mod=vendor, vet new only, test -count=1,
+again after rebase. Stash and retest on bare HEAD for untouched-file
+failures.
+
+Close: .notes/ (decisions, files, gates, changelog); inbox index;
+wiki/patterns/ if new failure mode.
+
+Fragile: subject-only commits; never --no-verify; commit-tree to strip
+Co-authored-by; --force-with-lease only; ASCII tavern; no gofmt -w vendor;
+ENG-932537 Roles and Entities only, AccessPolicies out of scope.
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================
